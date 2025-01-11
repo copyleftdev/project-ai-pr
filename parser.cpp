@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <memory>
 
+//  add a comment
 class HttpParserError : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
