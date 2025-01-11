@@ -6,6 +6,10 @@
 #include <algorithm>
 #include <memory>
 
+
+// This code defines an HTTP request parser that can parse raw HTTP request strings
+// into structured HttpRequest objects. It includes error handling for invalid
+// request formats and supports parsing of request lines, headers, and bodies.
 class HttpParserError : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
