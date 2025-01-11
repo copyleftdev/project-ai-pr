@@ -124,10 +124,8 @@ class DictFlattener:
 
     def _join_keys(self, parent_key: str, child_key: str) -> str:
         """Join parent and child keys with delimiter."""
-        if not parent_key:
-            key = child_key
-        else:
-            key = f"{parent_key}{self.delimiter}{child_key}"
+        # Bug: Doesn't check if child_key is empty, which can lead to duplicate delimiters
+        key = f"{parent_key}{self.delimiter}{child_key}"
         return f"{self.prefix}{key}" if self.prefix else key
 
     def _get_depth(self, key: str) -> int:
