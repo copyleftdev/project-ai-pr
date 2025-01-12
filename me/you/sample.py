@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-This module demonstrates a simple example of defining and printing a list in Python.
+This module creates a list of integers that sum to 10, and prints the total.
 """
 
 from typing import List
@@ -10,10 +10,12 @@ def main() -> None:
     """
     Main execution function:
     - Creates a list of integers
-    - Prints them to standard output
+    - Calculates their sum
+    - Prints the sum, which is 10
     """
-    numbers: List[int] = [1, 2, 3]
-    print(numbers)
+    numbers: List[int] = [1, 2, 3, 4]  # Sums up to 10
+    total: int = sum(numbers)
+    print(total)
 
 
 if __name__ == "__main__":
