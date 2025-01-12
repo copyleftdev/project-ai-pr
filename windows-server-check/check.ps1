@@ -1,75 +1,116 @@
 <#
 .SYNOPSIS
-    Network OS-level discovery tool using a service account.
-.DESCRIPTION
-    This script:
-    1. Authenticates with a service account.
-    2. Retrieves a list of computers from Active Directory.
-    3. Queries OS-level information from each computer via WMI.
-    4. Outputs discovery results to the console (and optionally CSV).
+    Secure Network OS-level discovery tool using a service account.
 
-    Note: 
-    - You must have RSAT (Remote Server Administration Tools) or 
-      equivalent modules for AD commands to work (e.g., the ActiveDirectory module).
-    - Make sure WinRM is enabled or WMI is open on the target hosts.
+.DESCRIPTION
+    - This refactored script avoids storing the service account password 
+      in plain text or script parameters.
+    - Instead, it either prompts for credentials (Approach A) or retrieves 
+      them securely from the Windows Credential Manager (Approach B).
+    - Recommends using WinRM over HTTPS or a secured WMI channel to mitigate 
+      network-level security concerns.
+
+.NOTES
+    - You must have RSAT (or equivalent AD modules) to run ActiveDirectory commands.
+    - Ensure remote hosts allow secure WMI or WinRM communication.
+    - Requires PowerShell 7+ for ThreadJobs (or adjust accordingly).
 #>
 
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$ServiceAccountUsername,
-
-    [Parameter(Mandatory=$true)]
-    [string]$ServiceAccountPassword,
-
     [switch]$UseWinRM  # Toggle to demonstrate WinRM approach instead of WMI
 )
 
+Import-Module ActiveDirectory -ErrorAction Stop
+
 # -----------------------
-# 1. Secure the credentials
+# Choose either Approach A or Approach B
 # -----------------------
-try {
-    # Convert clear-text password to SecureString
-    $secPassword = ConvertTo-SecureString -String $ServiceAccountPassword -AsPlainText -Force
-    # Create a credential object
-    $credential = New-Object System.Management.Automation.PSCredential($ServiceAccountUsername, $secPassword)
+
+# APPROACH A: Prompt the user for credentials at runtime.
+# $credential = Get-Credential -Message "Please enter the service account credentials"
+
+# APPROACH B: Retrieve credentials from the Windows Credential Manager.
+# To use this approach:
+#   1) Ensure you've stored credentials in Windows Credential Manager
+#      e.g., via cmdkey.exe:
+#         cmdkey /add:MYDOMAIN\ServiceAccount /user:MYDOMAIN\ServiceAccount /pass
+#   2) Then set $TargetCredentialName accordingly.
+#   3) Use the CredentialManager module or a custom function (below) to retrieve it.
+
+$TargetCredentialName = "MYDOMAIN\\ServiceAccount"
+
+function Get-StoredCredential {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$TargetName
+    )
+    # This function requires the CredentialManager module or a custom method to pull from Windows.
+    # In PowerShell 7+, you can install the 'CredentialManager' module from the PSGallery:
+    #    Install-Module CredentialManager
+    # Then:
+    #    return Get-StoredCredential -Target $TargetName
+    #
+    # For demonstration, here's a simplified example:
+    try {
+        if (Get-Module -ListAvailable -Name CredentialManager) {
+            Import-Module CredentialManager -ErrorAction Stop
+            $cred = Get-StoredCredential -Target $TargetName
+            if (!$cred) {
+                throw "No stored credential found for $TargetName."
+            }
+            return $cred
+        }
+        else {
+            throw "The CredentialManager module is not installed. Please install it or switch to Approach A."
+        }
+    }
+    catch {
+        Write-Error "[!] Failed to retrieve stored credential: $($_.Exception.Message)"
+        return $null
+    }
 }
-catch {
-    Write-Host "[!] Failed to create credential object. Error: $($_.Exception.Message)"
+
+# Uncomment whichever approach you prefer:
+# $credential = Get-Credential -Message "Please enter the service account credentials"
+$credential = Get-StoredCredential -TargetName $TargetCredentialName
+
+if (-not $credential) {
+    Write-Error "[!] No credential found or provided. Exiting script."
     return
 }
 
 # -----------------------
-# 2. Get all domain-joined computers
+# 1. Get all domain-joined computers
 # -----------------------
 Write-Host "[*] Retrieving computers from Active Directory..."
 
 try {
-    Import-Module ActiveDirectory -ErrorAction Stop
+    # Example: Retrieve all computers
+    # For security, consider filtering by specific OU or computer name pattern
     $computers = Get-ADComputer -Filter * -Properties OperatingSystem, DNSHostName | Select-Object -Unique
 }
 catch {
-    Write-Host "[!] Error retrieving AD computers. Ensure you have RSAT installed and AD modules available."
-    Write-Host "    Exception: $($_.Exception.Message)"
+    Write-Host "[!] Error retrieving AD computers: $($_.Exception.Message)"
     return
 }
 
 Write-Host "[*] Found $($computers.Count) computers in Active Directory."
 
 # -----------------------
-# 3. Function for OS-level discovery
+# 2. Functions for OS-level discovery
 # -----------------------
 function Get-OSInfoWMI {
     param(
         [string]$ComputerName,
         [System.Management.Automation.PSCredential]$Cred
     )
-
-    # WMI query to Win32_OperatingSystem
+    # In a secure environment, you might set up IPsec or other encryption for WMI 
+    # to protect these queries over the network.
+    # Also ensure the account has appropriate permissions on the remote system.
     $osInfo = Get-WmiObject -Class Win32_OperatingSystem `
                             -ComputerName $ComputerName `
                             -Credential $Cred `
                             -ErrorAction Stop
-
     return $osInfo
 }
 
@@ -78,28 +119,30 @@ function Get-OSInfoWinRM {
         [string]$ComputerName,
         [System.Management.Automation.PSCredential]$Cred
     )
-
-    # Alternatively, use the WSMan/WinRM-based approach:
-    # PowerShell remoting must be enabled on the remote machine.
-    $session = New-PSSession -ComputerName $ComputerName -Credential $Cred -ErrorAction Stop
-    $osInfo = Invoke-Command -Session $session -ScriptBlock {
-        Get-CimInstance Win32_OperatingSystem
+    # For best security, consider configuring WinRM over HTTPS.
+    # See: https://docs.microsoft.com/powershell/scripting/learn/remoting/winrmsecurity
+    $session = $null
+    try {
+        $session = New-PSSession -ComputerName $ComputerName -UseSSL -Credential $Cred -ErrorAction Stop
+        $osInfo = Invoke-Command -Session $session -ScriptBlock {
+            Get-CimInstance Win32_OperatingSystem
+        }
     }
-    Remove-PSSession -Session $session
+    finally {
+        if ($session) {
+            Remove-PSSession -Session $session
+        }
+    }
     return $osInfo
 }
 
 # -----------------------
-# 4. Enumerate all systems concurrently
+# 3. Enumerate systems concurrently
 # -----------------------
-# For better performance, use PowerShell jobs or ThreadJobs. 
-# Below is an example using ThreadJobs (PowerShell 7+).
-$results = foreach ($comp in $computers) {
+$jobs = foreach ($comp in $computers) {
     Start-ThreadJob -ScriptBlock {
         param($c, $useWinRM, $cred)
 
-        # If the system is offline or you lack permissions, it’ll throw.
-        # Wrap in try/catch for graceful handling.
         $result = [PSCustomObject]@{
             ComputerName = $c.Name
             DNSHostName  = $c.DNSHostName
@@ -114,7 +157,7 @@ $results = foreach ($comp in $computers) {
             if ($useWinRM) {
                 $osData = Get-OSInfoWinRM -ComputerName $c.DNSHostName -Cred $cred
             } else {
-                $osData = Get-OSInfoWMI   -ComputerName $c.DNSHostName -Cred $cred
+                $osData = Get-OSInfoWMI -ComputerName $c.DNSHostName -Cred $cred
             }
 
             $result.OS          = $osData.Caption
@@ -124,9 +167,7 @@ $results = foreach ($comp in $computers) {
             $result.Status      = "Success"
         }
         catch {
-            # Logging the error message for diagnostic
-            $errorMsg = $_.Exception.Message
-            $result.Status = "Error: $errorMsg"
+            $result.Status = "Error: " + $_.Exception.Message
         }
 
         return $result
@@ -134,22 +175,23 @@ $results = foreach ($comp in $computers) {
 }
 
 Write-Host "[*] Waiting for discovery jobs to complete..."
-Wait-Job -Job $results | Out-Null
+Wait-Job -Job $jobs | Out-Null
 
-# Retrieve the results from each job
-$finalResults = Receive-Job -Job $results
+# Collect results
+$finalResults = Receive-Job -Job $jobs
 
-# Clean up jobs
-Remove-Job -Job $results | Out-Null
+# Clean up
+Remove-Job -Job $jobs | Out-Null
 
 # -----------------------
-# 5. Output the final results
+# 4. Output the final results
 # -----------------------
 Write-Host "`n===== Discovery Results ====="
-$finalResults | Select-Object ComputerName, DNSHostName, OS, ServicePack, Version, LastBootUp, Status | 
+$finalResults | 
+    Select-Object ComputerName, DNSHostName, OS, ServicePack, Version, LastBootUp, Status |
     Format-Table -AutoSize
 
-# Optionally, export the results to a CSV
+# Optional: export to CSV
 # $finalResults | Export-Csv -NoTypeInformation -Path .\DiscoveryResults.csv
 
 Write-Host "`n[*] Discovery complete!"
