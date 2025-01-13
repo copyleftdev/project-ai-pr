@@ -1,0 +1,7 @@
+config.xml
+configuration.xml
+MBMon.xml
+*.csv
+*.bak
+*.pyc
+MBMon/setup/MBMon.xml
