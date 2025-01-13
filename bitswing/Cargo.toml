@@ -1,0 +1,11 @@
+[workspace]
+members = ["bpf", "user"]
+
+[package]
+name = "bitswing-workspace"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "bitswing_workspace"
+path = "src/lib.rs"

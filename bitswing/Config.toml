@@ -1,0 +1,11 @@
+[general]
+interface = "eth0"
+default_rate_limit_bps = 500000
+
+[[rules]]
+port = 80
+rate_limit_bps = 1000000
+
+[[rules]]
+port = 443
+rate_limit_bps = 1500000
