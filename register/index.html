@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https:; font-src 'self' data: https:;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), camera=(), microphone=()">
+    
+    <title>Account Registration</title>
+
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <a href="#registration-form" class="skip-link">Skip to registration form</a>
+
+    <header role="banner">
+        <nav role="navigation" aria-label="Main navigation">
+            <ul>
+                <li><a href="/" aria-label="Return to home page">Home</a></li>
+                <li><a href="/login" aria-label="Go to login page">Login</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main id="main-content" role="main" tabindex="-1">
+        <h1>Create Your Account</h1>
+        
+        <form id="registration-form" 
+              action="/register" 
+              method="POST" 
+              novalidate 
+              data-automation-id="registration-form">
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       required 
+                       aria-required="true"
+                       autocomplete="email"
+                       pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                       data-automation-id="email-input">
+                <span class="error" role="alert" aria-live="polite"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" 
+                       id="password" 
+                       name="password" 
+                       required 
+                       aria-required="true"
+                       autocomplete="new-password"
+                       minlength="8"
+                       data-automation-id="password-input">
+                <span class="error" role="alert" aria-live="polite"></span>
+                <div class="password-requirements" aria-live="polite">
+                    <ul>
+                        <li>Minimum 8 characters</li>
+                        <li>At least one uppercase letter</li>
+                        <li>At least one number</li>
+                        <li>At least one special character</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm-password">Confirm Password</label>
+                <input type="password" 
+                       id="confirm-password" 
+                       name="confirm-password" 
+                       required 
+                       aria-required="true"
+                       autocomplete="new-password"
+                       data-automation-id="confirm-password-input">
+                <span class="error" role="alert" aria-live="polite"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="first-name">First Name</label>
+                <input type="text" 
+                       id="first-name" 
+                       name="first-name" 
+                       required 
+                       aria-required="true"
+                       autocomplete="given-name"
+                       data-automation-id="first-name-input">
+                <span class="error" role="alert" aria-live="polite"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="last-name">Last Name</label>
+                <input type="text" 
+                       id="last-name" 
+                       name="last-name" 
+                       required 
+                       aria-required="true"
+                       autocomplete="family-name"
+                       data-automation-id="last-name-input">
+                <span class="error" role="alert" aria-live="polite"></span>
+            </div>
+
+            <div class="form-group">
+                <fieldset>
+                    <legend>Terms and Conditions</legend>
+                    <div class="checkbox-group">
+                        <input type="checkbox" 
+                               id="terms" 
+                               name="terms" 
+                               required 
+                               aria-required="true"
+                               data-automation-id="terms-checkbox">
+                        <label for="terms">I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></label>
+                        <span class="error" role="alert" aria-live="polite"></span>
+                    </div>
+                </fieldset>
+            </div>
+
+            <button type="submit" 
+                    aria-label="Create account"
+                    data-automation-id="submit-button">
+                Create Account
+            </button>
+        </form>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('registration-form');
+            
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                if (validateForm(form)) {
+                    submitForm(form);
+                }
+            });
+
+            function validateForm(form) {
+                const password = form.querySelector('#password');
+                const confirmPassword = form.querySelector('#confirm-password');
+                const email = form.querySelector('#email');
+                let isValid = true;
+
+                clearErrors();
+
+                if (!isValidEmail(email.value)) {
+                    showError(email, 'Please enter a valid email address');
+                    isValid = false;
+                }
+
+                if (!isValidPassword(password.value)) {
+                    showError(password, 'Password does not meet requirements');
+                    isValid = false;
+                }
+
+                if (password.value !== confirmPassword.value) {
+                    showError(confirmPassword, 'Passwords do not match');
+                    isValid = false;
+                }
+
+                if (!form.querySelector('#terms').checked) {
+                    showError(form.querySelector('#terms'), 'You must accept the terms and conditions');
+                    isValid = false;
+                }
+
+                return isValid;
+            }
+
+            function isValidEmail(email) {
+                const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                return emailRegex.test(email);
+            }
+
+            function isValidPassword(password) {
+                const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+                return passwordRegex.test(password);
+            }
+
+            function showError(input, message) {
+                const errorSpan = input.nextElementSibling;
+                if (errorSpan && errorSpan.classList.contains('error')) {
+                    errorSpan.textContent = message;
+                    errorSpan.style.display = 'block';
+                    input.setAttribute('aria-invalid', 'true');
+                }
+            }
+
+            function clearErrors() {
+                const errors = form.querySelectorAll('.error');
+                errors.forEach(error => {
+                    error.textContent = '';
+                    error.style.display = 'none';
+                });
+                form.querySelectorAll('[aria-invalid]').forEach(input => {
+                    input.removeAttribute('aria-invalid');
+                });
+            }
+
+            async function submitForm(form) {
+                try {
+                    const formData = new FormData(form);
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Registration failed');
+                    
+                    window.location.href = '/registration-success';
+                } catch (error) {
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    showError(submitButton, 'Registration failed. Please try again.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
