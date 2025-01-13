@@ -24,7 +24,6 @@ class DictFlattener:
     """
 
     def __init__(
-        self,
         delimiter: str = ".",
         prefix: str = "",
         max_depth: Optional[int] = None,
