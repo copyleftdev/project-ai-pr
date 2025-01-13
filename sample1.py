@@ -2,6 +2,8 @@ from typing import Any, Dict, Union, Optional
 from collections.abc import Mapping
 import copy
 
+# edit to open pull request
+
 
 class DictFlattener:
     """A professional-grade dictionary flattener that handles nested dictionaries of any depth.
@@ -22,7 +24,6 @@ class DictFlattener:
     """
 
     def __init__(
-        self,
         delimiter: str = ".",
         prefix: str = "",
         max_depth: Optional[int] = None,
