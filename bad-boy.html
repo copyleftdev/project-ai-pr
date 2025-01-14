@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Intentionally Vulnerable XSS Example</title>
+</head>
+<body>
+  <h1>Intentionally Vulnerable XSS Page</h1>
+
+  <p>
+    This page takes a query parameter <code>input</code> and displays it without any sanitization:
+  </p>
+
+  <!-- 
+    WARNING: This is intentionally vulnerable.
+    The content of 'input' is injected directly into HTML without sanitization.
+  -->
+  <div id="output">
+    <script>
+      // Get 'input' parameter from the query string
+      const params = new URLSearchParams(window.location.search);
+      const userInput = params.get('input') || 'No input provided';
+
+      // Inject into the page without sanitization (XSS risk):
+      document.write("User input: " + userInput);
+    </script>
+  </div>
+
+  <p>
+    Try loading this page with a query string, for example:
+    <br>
+    <code>?input=&lt;script&gt;alert('XSS')&lt;/script&gt;</code>
+  </p>
+  
+  <p>
+    This should trigger an alert if the page allows script execution from user-provided data.
+  </p>
+</body>
+</html>
